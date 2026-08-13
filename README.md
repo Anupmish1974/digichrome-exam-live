@@ -1,18 +1,12 @@
-# DigiChrome Exam Live
+# DigiChrome Exam Live — Final
+1200 MCQs for Data Analysis exam preparation.
 
-A clean, custom-branded real-time practice app for the DigiChrome Data Analysis syllabus.
+Topics:
+Excel, Power BI, SQL, Tableau, Python, NumPy, Pandas,
+Data Cleaning, EDA, Visualization, Statistics, Machine Learning.
 
-## Run on your computer
-1. Install Node.js (LTS).
-2. Open this folder in Terminal.
-3. Run `npm install`
-4. Run `npm start`
-5. Open `http://localhost:3000`
-
-## Make it online
-Deploy this Node app to a Node-compatible host such as Render, Railway, or another server provider. After deployment, share the HTTPS link with your friends.
-
-## Important
-This is a starter production-style demo. For a full exam platform, add a database, user accounts, persistent question bank, anti-cheat rules, server-authoritative timer/scoring, and HTTPS/production environment variables.
-
-The visual identity is intentionally custom and avoids generic AI/chat styling.
+## Vercel
+This project is a Node/Express + Socket.IO app. For true Live Room
+multiplayer, use a deployment/runtime that supports persistent WebSocket
+connections. If deploying to Vercel, the static solo-practice portion works,
+but Socket.IO multiplayer may require a separate WebSocket-capable backend.
