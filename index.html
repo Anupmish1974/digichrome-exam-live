@@ -1,0 +1,38 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DigiChrome Exam Live</title><script src="/socket.io/socket.io.js"></script>
+<style>
+:root{--ink:#18202b;--muted:#6c7684;--paper:#f7f4ee;--card:#fff;--line:#ded9cf;--accent:#d46a3a;--dark:#202a36}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,Arial,sans-serif}
+.wrap{max-width:880px;margin:auto;padding:26px 18px 60px}.brand{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px}
+.logo{font-weight:900;letter-spacing:-1px;font-size:22px}.tag{font-size:12px;color:var(--muted);letter-spacing:1.4px;text-transform:uppercase}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px;margin:14px 0;box-shadow:0 10px 30px #4c3b2810}
+h1{font-size:42px;line-height:1.02;letter-spacing:-2px;margin:8px 0 12px}.lead{color:var(--muted);line-height:1.6}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.choice{border:1px solid var(--line);background:#fff;border-radius:14px;padding:16px;text-align:left;font-size:16px;cursor:pointer}.choice:hover{border-color:var(--accent);transform:translateY(-1px)}
+input{width:100%;padding:14px;border:1px solid var(--line);border-radius:12px;font-size:16px;background:#fff}.btn{border:0;background:var(--dark);color:#fff;border-radius:12px;padding:13px 18px;font-weight:700;cursor:pointer}.btn.alt{background:#eee9e1;color:var(--ink)}.btn.accent{background:var(--accent)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.hide{display:none}.room{font-size:34px;letter-spacing:7px;font-weight:900}.meta{display:flex;justify-content:space-between;color:var(--muted);font-size:14px;margin-bottom:15px}.progress{height:7px;background:#ebe6dd;border-radius:9px;overflow:hidden}.bar{height:100%;background:var(--accent);width:0}.score{font-size:64px;font-weight:900;letter-spacing:-4px}.player{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #eee}.pill{padding:6px 9px;border-radius:99px;background:#f0ece5;font-size:12px;color:#555}
+@media(max-width:600px){h1{font-size:34px}.grid{grid-template-columns:1fr}.wrap{padding:18px 12px}}
+</style></head><body><main class="wrap">
+<div class="brand"><div class="logo">DIGICHROME</div><div class="tag">Exam Lab / Live</div></div>
+<section id="home" class="card"><div class="pill">DATA ANALYSIS • PRACTICE</div><h1>Prepare. Compete.<br>Know your score.</h1><p class="lead">A private practice room for your Data Analysis exam. Create a room, share the code, and compete with your friends in real time.</p>
+<div class="grid"><button class="choice" onclick="createRoom()"><b>+ Create a room</b><br><span class="lead">Host a live test</span></button><button class="choice" onclick="showJoin()"><b>↗ Join a room</b><br><span class="lead">Enter your friend's code</span></button></div></section>
+<section id="join" class="card hide"><h2>Join a room</h2><input id="joinName" placeholder="Your name"><br><br><input id="code" placeholder="ROOM CODE" maxlength="5"><br><br><button class="btn accent" onclick="joinRoom()">Join room</button></section>
+<section id="lobby" class="card hide"><div class="pill">LIVE ROOM</div><h2>Your room</h2><div class="room" id="roomCode"></div><p class="lead">Share this code with your friends.</p><div id="players"></div><button id="start" class="btn accent hide" onclick="startGame()">Start exam</button></section>
+<section id="game" class="card hide"><div class="meta"><span id="counter"></span><span id="clock"></span></div><div class="progress"><div class="bar" id="bar"></div></div><h2 id="q"></h2><div id="opts" class="grid"></div></section>
+<section id="done" class="card hide"><div class="pill">RESULT</div><h2>Round complete</h2><div class="score" id="myScore">0</div><p class="lead">Your score</p><div id="board"></div><button class="btn" onclick="location.reload()">New room</button></section>
+</main>
+<script>
+const s=io();let room="",me="",isHost=false,index=0,total=0,score=0,timer;
+function $(x){return document.getElementById(x)}function hideAll(){["home","join","lobby","game","done"].forEach(x=>$(x).classList.add("hide"))}
+function showJoin(){hideAll();$("join").classList.remove("hide")}
+function createRoom(){me=prompt("Enter your name")||"Host";isHost=true;s.emit("createRoom",{name:me,limit:20},r=>{if(!r.ok)return alert(r.error);room=r.code;openLobby()})}
+function joinRoom(){me=$("joinName").value.trim()||"Player";room=$("code").value.trim().toUpperCase();s.emit("joinRoom",{code:room,name:me},r=>{if(!r.ok)return alert(r.error);isHost=false;openLobby()})}
+function openLobby(){hideAll();$("lobby").classList.remove("hide");$("roomCode").textContent=room;if(isHost)$("start").classList.remove("hide")}
+s.on("lobby",ps=>{$("players").innerHTML=ps.map(p=>`<div class="player"><span>${p.name}</span><b>${p.score}</b></div>`).join("")});
+function startGame(){s.emit("startGame",{code:room})}
+s.on("gameStart",d=>{total=d.total;index=0;hideAll();$("game").classList.remove("hide");startClock(d.time)});
+s.on("question",d=>{index=d.index;total=d.total;$("counter").textContent=`QUESTION ${index+1} / ${total}`;$("bar").style.width=((index+1)/total*100)+"%";$("q").textContent=d.text;$("opts").innerHTML=d.options.map(o=>`<button class="choice" onclick="answer(this,${JSON.stringify(o)})">${o}</button>`).join("")});
+function answer(btn,o){document.querySelectorAll(".choice").forEach(x=>x.disabled=true);s.emit("answer",{code:room,index,answer:o});setTimeout(()=>{if(index+1<total)s.emit("nextQuestion",{code:room,index:index+1})},700)}
+function startClock(sec){clearInterval(timer);let t=sec;timer=setInterval(()=>{t--;let m=Math.floor(t/60),z=String(t%60).padStart(2,"0");$("clock").textContent=m+":"+z;if(t<=0)clearInterval(timer)},1000)}
+s.on("scores",ps=>{let p=ps.find(x=>x.name===me);if(p)score=p.score});
+s.on("finished",()=>{clearInterval(timer);hideAll();$("done").classList.remove("hide");$("myScore").textContent=score;});
+</script></body></html>
