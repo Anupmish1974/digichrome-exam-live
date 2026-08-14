@@ -6,7 +6,8 @@
 
   <title>DigiChrome Exam Live</title>
 
-  <script src="/socket.io/socket.io.js"></script>
+  <!-- Socket.IO Client -->
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
 
   <style>
     * {
@@ -244,16 +245,24 @@
 <script>
 
   /*
-    Socket.IO connection
+    =====================================================
+    SOCKET.IO CONNECTION
+    =====================================================
+
+    Frontend is hosted on Vercel.
+    Backend / Socket.IO server is hosted on Render.
 
     IMPORTANT:
-    This expects the Node/Socket.IO server to be running
-    on the same domain.
+    Do NOT change this URL unless your Render URL changes.
   */
 
-  const socket = io("https://digichrome-exam-live-1.onrender.com", {
-  transports: ["websocket", "polling"]
-});
+  const socket = io(
+    "https://digichrome-exam-live-1.onrender.com",
+    {
+      transports: ["websocket", "polling"]
+    }
+  );
+
 
   let currentRoom = "";
   let isHost = false;
@@ -277,6 +286,16 @@
 
     document.getElementById("connectionStatus").innerText =
       "🔴 Disconnected from exam server";
+
+  });
+
+
+  socket.on("connect_error", function (error) {
+
+    console.error("Socket connection error:", error);
+
+    document.getElementById("connectionStatus").innerText =
+      "🔴 Unable to connect to exam server";
 
   });
 
@@ -315,6 +334,16 @@
     }
 
 
+    if (!socket.connected) {
+
+      document.getElementById("homeStatus").innerText =
+        "Server is not connected. Please wait a moment and try again.";
+
+      return;
+
+    }
+
+
     currentRoom = "";
 
     isHost = true;
@@ -323,12 +352,6 @@
     document.getElementById("homeStatus").innerText =
       "Creating room...";
 
-
-    /*
-      IMPORTANT:
-      server.js expects:
-      { name, count, topic }
-    */
 
     socket.emit(
       "createRoom",
@@ -390,6 +413,16 @@
     }
 
 
+    if (!socket.connected) {
+
+      document.getElementById("homeStatus").innerText =
+        "Server is not connected. Please wait a moment and try again.";
+
+      return;
+
+    }
+
+
     currentRoom = code;
 
     isHost = false;
@@ -398,11 +431,6 @@
     document.getElementById("homeStatus").innerText =
       "Joining room...";
 
-
-    /*
-      server.js expects:
-      { code, name }
-    */
 
     socket.emit(
       "joinRoom",
@@ -479,7 +507,8 @@
 
     players.forEach(function(player) {
 
-      const div = document.createElement("div");
+      const div =
+        document.createElement("div");
 
       div.innerText =
         "👤 " + (player.name || "Player");
@@ -521,6 +550,17 @@
 
 
   // --------------------------------------------------
+  // GAME START
+  // --------------------------------------------------
+
+  socket.on("gameStart", function(data) {
+
+    console.log("Game started:", data);
+
+  });
+
+
+  // --------------------------------------------------
   // QUESTION RECEIVED
   // --------------------------------------------------
 
@@ -544,7 +584,8 @@
 
     document.getElementById("questionNumber")
       .innerText =
-      "Question " + (currentQuestionIndex + 1);
+      "Question " + (currentQuestionIndex + 1)
+      + " / " + (data.total || "");
 
 
     document.getElementById("questionText")
@@ -578,7 +619,11 @@
 
       button.onclick = function() {
 
-        selectAnswer(index, option, button);
+        selectAnswer(
+          index,
+          option,
+          button
+        );
 
       };
 
@@ -599,7 +644,16 @@
   // SELECT ANSWER
   // --------------------------------------------------
 
-  function selectAnswer(index, answer, clickedButton) {
+  function selectAnswer(
+    index,
+    answer,
+    clickedButton
+  ) {
+
+    if (selectedAnswer !== null) {
+      return;
+    }
+
 
     selectedAnswer = answer;
 
@@ -636,20 +690,103 @@
 
 
   // --------------------------------------------------
+  // SCORES
+  // --------------------------------------------------
+
+  socket.on("scores", function(scores) {
+
+    console.log("Scores:", scores);
+
+  });
+
+
+  // --------------------------------------------------
   // NEXT QUESTION
   // --------------------------------------------------
 
   function nextQuestion() {
 
+    if (!isHost) {
+      return;
+    }
+
+
     socket.emit(
       "nextQuestion",
       {
-        code: currentRoom,
-        index: currentQuestionIndex
+        code: currentRoom
       }
     );
 
   }
+
+
+  // --------------------------------------------------
+  // FINISHED
+  // --------------------------------------------------
+
+  socket.on("finished", function(results) {
+
+    document.getElementById("examScreen")
+      .classList.remove("hidden");
+
+
+    document.getElementById("questionText")
+      .innerText =
+      "🎉 Exam Finished";
+
+
+    document.getElementById("options")
+      .innerHTML = "";
+
+
+    let html = "<h3>Final Results</h3>";
+
+
+    if (Array.isArray(results)) {
+
+      results.forEach(function(player, index) {
+
+        html +=
+          "<p>" +
+          (index + 1) +
+          ". " +
+          (player.name || "Player") +
+          " — " +
+          (player.score || 0) +
+          " points" +
+          "</p>";
+
+      });
+
+    }
+
+
+    document.getElementById("examStatus")
+      .innerHTML = html;
+
+
+    document.getElementById("nextButton")
+      .classList.add("hidden");
+
+  });
+
+
+  // --------------------------------------------------
+  // ROOM CLOSED
+  // --------------------------------------------------
+
+  socket.on("roomClosed", function(data) {
+
+    alert(
+      data?.message ||
+      "Host disconnected. Room closed."
+    );
+
+
+    location.reload();
+
+  });
 
 
   // --------------------------------------------------
@@ -672,6 +809,10 @@
   );
 
 
+  // --------------------------------------------------
+  // DISABLE CONTEXT MENU
+  // --------------------------------------------------
+
   document.addEventListener(
     "contextmenu",
     function(event) {
@@ -681,6 +822,10 @@
     }
   );
 
+
+  // --------------------------------------------------
+  // DISABLE COPY
+  // --------------------------------------------------
 
   document.addEventListener(
     "copy",
