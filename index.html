@@ -251,7 +251,9 @@
     on the same domain.
   */
 
-  const socket = io();
+  const socket = io("https://digichrome-exam-live-1.onrender.com", {
+  transports: ["websocket", "polling"]
+});
 
   let currentRoom = "";
   let isHost = false;
