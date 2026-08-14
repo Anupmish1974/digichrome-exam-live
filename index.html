@@ -3,61 +3,693 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>DigiChrome Exam Live</title>
+
   <script src="/socket.io/socket.io.js"></script>
+
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #faf9f6; -webkit-user-select: none; user-select: none; }
-    .card { background: white; padding: 20px; border-radius: 12px; max-width: 500px; margin: 0 auto; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-    button { background: #000; color: #fff; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; font-weight: bold; }
-    input { width: 100%; padding: 10px; margin-top: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; }
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f5f5;
+      color: #111;
+    }
+
+    .card {
+      background: white;
+      padding: 25px;
+      border-radius: 16px;
+      max-width: 550px;
+      margin: 30px auto;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 30px;
+    }
+
+    h2 {
+      margin-top: 10px;
+    }
+
+    input,
+    select,
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 12px;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    input,
+    select {
+      border: 1px solid #ccc;
+    }
+
+    button {
+      border: none;
+      background: #000;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      opacity: 0.85;
+    }
+
+    .secondary {
+      background: #444;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .room-code {
+      font-size: 34px;
+      font-weight: bold;
+      text-align: center;
+      letter-spacing: 5px;
+      margin: 20px 0;
+    }
+
+    .status {
+      margin-top: 15px;
+      padding: 12px;
+      background: #f0f0f0;
+      border-radius: 8px;
+    }
+
+    .question {
+      font-size: 20px;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+
+    .option {
+      text-align: left;
+      background: white;
+      color: black;
+      border: 1px solid #ccc;
+    }
+
+    .option:hover {
+      background: #eee;
+    }
+
+    .players {
+      margin-top: 15px;
+      padding: 10px;
+      background: #fafafa;
+      border-radius: 8px;
+    }
+
+    #connectionStatus {
+      font-size: 13px;
+      margin-bottom: 15px;
+    }
   </style>
 </head>
+
 <body>
-  <div class="card">
-    <h2>DIGICHROME EXAM LAB</h2>
-    <div id="setup">
-      <button onclick="createRoom()">+ Create a Room</button>
-      <hr style="margin: 20px 0;">
-      <input type="text" id="roomInput" placeholder="Enter Room Code">
-      <button onclick="joinRoom()">Join Room</button>
+
+  <!-- HOME -->
+  <div class="card" id="homeScreen">
+
+    <h1>DIGICHROME EXAM LAB</h1>
+
+    <div id="connectionStatus">
+      Connecting to exam server...
     </div>
-    <div id="roomArea" style="display:none;">
-      <h3>Room Code: <span id="roomCodeDisplay"></span></h3>
-      <p id="status">Waiting for players...</p>
-    </div>
+
+    <hr>
+
+    <h2>Create Room</h2>
+
+    <input
+      type="text"
+      id="hostName"
+      placeholder="Enter your name"
+    >
+
+    <input
+      type="number"
+      id="questionCount"
+      placeholder="Number of questions"
+      value="20"
+      min="1"
+      max="100"
+    >
+
+    <input
+      type="text"
+      id="topic"
+      placeholder="Topic (e.g. Python, SQL, Excel)"
+      value="Data Analysis"
+    >
+
+    <button onclick="createRoom()">
+      + Create a Room
+    </button>
+
+    <hr>
+
+    <h2>Join Room</h2>
+
+    <input
+      type="text"
+      id="playerName"
+      placeholder="Enter your name"
+    >
+
+    <input
+      type="text"
+      id="roomInput"
+      placeholder="Enter Room Code"
+    >
+
+    <button onclick="joinRoom()">
+      Join Room
+    </button>
+
+    <div id="homeStatus" class="status"></div>
+
   </div>
 
-  <script>
-    const socket = io();
 
-    function createRoom() {
-      const code = Math.floor(1000 + Math.random() * 9000).toString();
-      socket.emit('create-room', code);
-      document.getElementById('setup').style.display = 'none';
-      document.getElementById('roomArea').style.display = 'block';
-      document.getElementById('roomCodeDisplay').innerText = code;
+  <!-- ROOM -->
+  <div class="card hidden" id="roomScreen">
+
+    <h2>Exam Room</h2>
+
+    <p>Room Code:</p>
+
+    <div class="room-code" id="roomCodeDisplay">
+      ------
+    </div>
+
+    <div id="roomStatus" class="status">
+      Waiting for players...
+    </div>
+
+    <div class="players">
+      <strong>Players:</strong>
+      <div id="playersList"></div>
+    </div>
+
+    <button
+      id="startButton"
+      onclick="startGame()"
+      class="hidden"
+    >
+      Start Exam
+    </button>
+
+  </div>
+
+
+  <!-- EXAM -->
+  <div class="card hidden" id="examScreen">
+
+    <h2>DigiChrome Exam</h2>
+
+    <div id="questionNumber"></div>
+
+    <div class="question" id="questionText"></div>
+
+    <div id="options"></div>
+
+    <div id="examStatus" class="status"></div>
+
+    <button
+      id="nextButton"
+      onclick="nextQuestion()"
+      class="hidden"
+    >
+      Next Question
+    </button>
+
+  </div>
+
+
+<script>
+
+  /*
+    Socket.IO connection
+
+    IMPORTANT:
+    This expects the Node/Socket.IO server to be running
+    on the same domain.
+  */
+
+  const socket = io();
+
+  let currentRoom = "";
+  let isHost = false;
+  let currentQuestionIndex = 0;
+  let selectedAnswer = null;
+
+
+  // --------------------------------------------------
+  // CONNECTION STATUS
+  // --------------------------------------------------
+
+  socket.on("connect", function () {
+
+    document.getElementById("connectionStatus").innerText =
+      "🟢 Connected to exam server";
+
+  });
+
+
+  socket.on("disconnect", function () {
+
+    document.getElementById("connectionStatus").innerText =
+      "🔴 Disconnected from exam server";
+
+  });
+
+
+  // --------------------------------------------------
+  // CREATE ROOM
+  // --------------------------------------------------
+
+  function createRoom() {
+
+    const name =
+      document.getElementById("hostName").value.trim();
+
+    const count =
+      Number(document.getElementById("questionCount").value);
+
+    const topic =
+      document.getElementById("topic").value.trim();
+
+
+    if (!name) {
+
+      alert("Please enter your name.");
+
+      return;
+
     }
 
-    function joinRoom() {
-      const code = document.getElementById('roomInput').value;
-      if(code) {
-        socket.emit('join-room', code);
-        document.getElementById('setup').style.display = 'none';
-        document.getElementById('roomArea').style.display = 'block';
-        document.getElementById('roomCodeDisplay').innerText = code;
-      }
+
+    if (!count || count < 1) {
+
+      alert("Please enter a valid question count.");
+
+      return;
+
     }
 
-    // --- Anti-Cheating Anti-Tab Switch System ---
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) {
-        alert("⚠️ Warning: आपने परीक्षा की स्क्रीन छोड़ी है! चीटिंग नोट कर ली गई है।");
+
+    currentRoom = "";
+
+    isHost = true;
+
+
+    document.getElementById("homeStatus").innerText =
+      "Creating room...";
+
+
+    /*
+      IMPORTANT:
+      server.js expects:
+      { name, count, topic }
+    */
+
+    socket.emit(
+      "createRoom",
+      {
+        name: name,
+        count: count,
+        topic: topic || "Data Analysis"
+      },
+      function(response) {
+
+        if (!response || !response.ok) {
+
+          document.getElementById("homeStatus").innerText =
+            response?.error || "Unable to create room.";
+
+          return;
+
+        }
+
+
+        currentRoom = response.code;
+
+        showRoom();
+
       }
+    );
+
+  }
+
+
+  // --------------------------------------------------
+  // JOIN ROOM
+  // --------------------------------------------------
+
+  function joinRoom() {
+
+    const name =
+      document.getElementById("playerName").value.trim();
+
+    const code =
+      document.getElementById("roomInput").value.trim().toUpperCase();
+
+
+    if (!name) {
+
+      alert("Please enter your name.");
+
+      return;
+
+    }
+
+
+    if (!code) {
+
+      alert("Please enter Room Code.");
+
+      return;
+
+    }
+
+
+    currentRoom = code;
+
+    isHost = false;
+
+
+    document.getElementById("homeStatus").innerText =
+      "Joining room...";
+
+
+    /*
+      server.js expects:
+      { code, name }
+    */
+
+    socket.emit(
+      "joinRoom",
+      {
+        code: code,
+        name: name
+      },
+      function(response) {
+
+        if (!response || !response.ok) {
+
+          document.getElementById("homeStatus").innerText =
+            response?.error || "Unable to join room.";
+
+          return;
+
+        }
+
+
+        showRoom();
+
+      }
+    );
+
+  }
+
+
+  // --------------------------------------------------
+  // SHOW ROOM
+  // --------------------------------------------------
+
+  function showRoom() {
+
+    document.getElementById("homeScreen")
+      .classList.add("hidden");
+
+    document.getElementById("roomScreen")
+      .classList.remove("hidden");
+
+    document.getElementById("roomCodeDisplay")
+      .innerText = currentRoom;
+
+
+    if (isHost) {
+
+      document.getElementById("startButton")
+        .classList.remove("hidden");
+
+    }
+
+  }
+
+
+  // --------------------------------------------------
+  // LOBBY UPDATE
+  // --------------------------------------------------
+
+  socket.on("lobby", function(players) {
+
+    const list =
+      document.getElementById("playersList");
+
+    list.innerHTML = "";
+
+
+    if (!players || players.length === 0) {
+
+      list.innerHTML = "No players yet.";
+
+      return;
+
+    }
+
+
+    players.forEach(function(player) {
+
+      const div = document.createElement("div");
+
+      div.innerText =
+        "👤 " + (player.name || "Player");
+
+      list.appendChild(div);
+
     });
 
-    document.addEventListener("contextmenu", (e) => e.preventDefault());
-    document.addEventListener("copy", (e) => e.preventDefault());
-  </script>
+
+    document.getElementById("roomStatus").innerText =
+      players.length + " player(s) in room";
+
+  });
+
+
+  // --------------------------------------------------
+  // START GAME
+  // --------------------------------------------------
+
+  function startGame() {
+
+    if (!currentRoom) {
+
+      alert("Room not found.");
+
+      return;
+
+    }
+
+
+    socket.emit(
+      "startGame",
+      {
+        code: currentRoom
+      }
+    );
+
+  }
+
+
+  // --------------------------------------------------
+  // QUESTION RECEIVED
+  // --------------------------------------------------
+
+  socket.on("question", function(data) {
+
+    if (!data) return;
+
+
+    document.getElementById("roomScreen")
+      .classList.add("hidden");
+
+    document.getElementById("examScreen")
+      .classList.remove("hidden");
+
+
+    currentQuestionIndex =
+      data.index ?? 0;
+
+    selectedAnswer = null;
+
+
+    document.getElementById("questionNumber")
+      .innerText =
+      "Question " + (currentQuestionIndex + 1);
+
+
+    document.getElementById("questionText")
+      .innerText =
+      data.question ||
+      data.text ||
+      "Question";
+
+
+    const optionsContainer =
+      document.getElementById("options");
+
+    optionsContainer.innerHTML = "";
+
+
+    const options =
+      data.options ||
+      data.choices ||
+      [];
+
+
+    options.forEach(function(option, index) {
+
+      const button =
+        document.createElement("button");
+
+      button.className = "option";
+
+      button.innerText =
+        option;
+
+      button.onclick = function() {
+
+        selectAnswer(index, option, button);
+
+      };
+
+
+      optionsContainer.appendChild(button);
+
+    });
+
+
+    document.getElementById("examStatus")
+      .innerText =
+      "Select your answer.";
+
+  });
+
+
+  // --------------------------------------------------
+  // SELECT ANSWER
+  // --------------------------------------------------
+
+  function selectAnswer(index, answer, clickedButton) {
+
+    selectedAnswer = answer;
+
+
+    const buttons =
+      document.querySelectorAll(".option");
+
+
+    buttons.forEach(function(button) {
+
+      button.disabled = true;
+
+    });
+
+
+    clickedButton.style.background = "#ddd";
+
+
+    socket.emit(
+      "answer",
+      {
+        code: currentRoom,
+        index: currentQuestionIndex,
+        answer: answer
+      }
+    );
+
+
+    document.getElementById("examStatus")
+      .innerText =
+      "Answer submitted.";
+
+  }
+
+
+  // --------------------------------------------------
+  // NEXT QUESTION
+  // --------------------------------------------------
+
+  function nextQuestion() {
+
+    socket.emit(
+      "nextQuestion",
+      {
+        code: currentRoom,
+        index: currentQuestionIndex
+      }
+    );
+
+  }
+
+
+  // --------------------------------------------------
+  // ANTI-CHEATING
+  // --------------------------------------------------
+
+  document.addEventListener(
+    "visibilitychange",
+    function() {
+
+      if (document.hidden) {
+
+        alert(
+          "⚠️ Warning: Please do not leave the exam screen."
+        );
+
+      }
+
+    }
+  );
+
+
+  document.addEventListener(
+    "contextmenu",
+    function(event) {
+
+      event.preventDefault();
+
+    }
+  );
+
+
+  document.addEventListener(
+    "copy",
+    function(event) {
+
+      event.preventDefault();
+
+    }
+  );
+
+</script>
+
 </body>
 </html>
-
