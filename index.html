@@ -1,13 +1,10 @@
-i<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>DigiChrome Exam Live</title>
-
-  <!-- Socket.IO Client -->
-  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <title>DigiChrome Exam Lab</title>
 
   <style>
     * {
@@ -15,20 +12,20 @@ i<!DOCTYPE html>
     }
 
     body {
-      font-family: Arial, sans-serif;
       margin: 0;
       padding: 20px;
-      background: #f5f5f5;
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
       color: #111;
     }
 
     .card {
+      max-width: 650px;
+      margin: 30px auto;
       background: white;
       padding: 25px;
       border-radius: 16px;
-      max-width: 550px;
-      margin: 30px auto;
-      box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     }
 
     h1 {
@@ -57,7 +54,7 @@ i<!DOCTYPE html>
 
     button {
       border: none;
-      background: #000;
+      background: #111;
       color: white;
       font-weight: bold;
       cursor: pointer;
@@ -67,335 +64,252 @@ i<!DOCTYPE html>
       opacity: 0.85;
     }
 
-    .secondary {
-      background: #444;
-    }
-
     .hidden {
       display: none;
-    }
-
-    .room-code {
-      font-size: 34px;
-      font-weight: bold;
-      text-align: center;
-      letter-spacing: 5px;
-      margin: 20px 0;
     }
 
     .status {
       margin-top: 15px;
       padding: 12px;
-      background: #f0f0f0;
+      background: #f1f1f1;
       border-radius: 8px;
     }
 
     .question {
-      font-size: 20px;
+      font-size: 21px;
       font-weight: bold;
-      margin: 20px 0;
+      line-height: 1.5;
+      margin: 25px 0;
     }
 
     .option {
       text-align: left;
       background: white;
-      color: black;
+      color: #111;
       border: 1px solid #ccc;
     }
 
-    .option:hover {
-      background: #eee;
+    .option.selected {
+      background: #ddd;
     }
 
-    .players {
-      margin-top: 15px;
-      padding: 10px;
-      background: #fafafa;
-      border-radius: 8px;
+    .option.correct {
+      background: #c8f7c5;
+      border-color: green;
     }
 
-    #connectionStatus {
-      font-size: 13px;
+    .option.wrong {
+      background: #ffd0d0;
+      border-color: red;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
       margin-bottom: 15px;
+      font-weight: bold;
+    }
+
+    .score {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 20px 0;
     }
   </style>
 </head>
 
 <body>
 
-  <!-- HOME -->
-  <div class="card" id="homeScreen">
+<!-- HOME SCREEN -->
+<div class="card" id="homeScreen">
 
-    <h1>DIGICHROME EXAM LAB</h1>
+  <h1>DIGICHROME EXAM LAB</h1>
 
-    <div id="connectionStatus">
-      Connecting to exam server...
+  <p>
+    Data Analysis MCQ Practice Exam
+  </p>
+
+  <hr>
+
+  <h2>Start Exam</h2>
+
+  <input
+    type="text"
+    id="studentName"
+    placeholder="Enter your name"
+  >
+
+  <select id="questionCount">
+    <option value="10">10 Questions</option>
+    <option value="20" selected>20 Questions</option>
+    <option value="30">30 Questions</option>
+    <option value="50">50 Questions</option>
+    <option value="100">100 Questions</option>
+  </select>
+
+  <button onclick="startExam()">
+    🚀 Start Exam
+  </button>
+
+  <div id="homeStatus" class="status">
+    Loading question bank...
+  </div>
+
+</div>
+
+
+<!-- EXAM SCREEN -->
+<div class="card hidden" id="examScreen">
+
+  <div class="topbar">
+
+    <div id="questionNumber">
+      Question 1
     </div>
 
-    <hr>
-
-    <h2>Create Room</h2>
-
-    <input
-      type="text"
-      id="hostName"
-      placeholder="Enter your name"
-    >
-
-    <input
-      type="number"
-      id="questionCount"
-      placeholder="Number of questions"
-      value="20"
-      min="1"
-      max="100"
-    >
-
-    <input
-      type="text"
-      id="topic"
-      placeholder="Topic (e.g. Python, SQL, Excel)"
-      value="Data Analysis"
-    >
-
-    <button onclick="createRoom()">
-      + Create a Room
-    </button>
-
-    <hr>
-
-    <h2>Join Room</h2>
-
-    <input
-      type="text"
-      id="playerName"
-      placeholder="Enter your name"
-    >
-
-    <input
-      type="text"
-      id="roomInput"
-      placeholder="Enter Room Code"
-    >
-
-    <button onclick="joinRoom()">
-      Join Room
-    </button>
-
-    <div id="homeStatus" class="status"></div>
+    <div id="scoreDisplay">
+      Score: 0
+    </div>
 
   </div>
 
+  <div
+    class="question"
+    id="questionText"
+  ></div>
 
-  <!-- ROOM -->
-  <div class="card hidden" id="roomScreen">
+  <div id="options"></div>
 
-    <h2>Exam Room</h2>
-
-    <p>Room Code:</p>
-
-    <div class="room-code" id="roomCodeDisplay">
-      ------
-    </div>
-
-    <div id="roomStatus" class="status">
-      Waiting for players...
-    </div>
-
-    <div class="players">
-      <strong>Players:</strong>
-      <div id="playersList"></div>
-    </div>
-
-    <button
-      id="startButton"
-      onclick="startGame()"
-      class="hidden"
-    >
-      Start Exam
-    </button>
-
+  <div
+    id="answerStatus"
+    class="status"
+  >
+    Select an answer.
   </div>
 
+  <button
+    id="nextButton"
+    onclick="nextQuestion()"
+    class="hidden"
+  >
+    Next Question →
+  </button>
 
-  <!-- EXAM -->
-  <div class="card hidden" id="examScreen">
+</div>
 
-    <h2>DigiChrome Exam</h2>
 
-    <div id="questionNumber"></div>
+<!-- RESULT SCREEN -->
+<div class="card hidden" id="resultScreen">
 
-    <div class="question" id="questionText"></div>
+  <h1>🎉 Exam Completed</h1>
 
-    <div id="options"></div>
+  <p id="studentResult"></p>
 
-    <div id="examStatus" class="status"></div>
+  <div
+    class="score"
+    id="finalScore"
+  ></div>
 
-    <button
-      id="nextButton"
-      onclick="nextQuestion()"
-      class="hidden"
-    >
-      Next Question
-    </button>
+  <div id="resultDetails"></div>
 
-  </div>
+  <button onclick="location.reload()">
+    🔄 Start New Exam
+  </button>
+
+</div>
 
 
 <script>
 
-  /*
-    =====================================================
-    SOCKET.IO CONNECTION
-    =====================================================
+  // =====================================================
+  // GLOBAL VARIABLES
+  // =====================================================
 
-    Frontend is hosted on Vercel.
-    Backend / Socket.IO server is hosted on Render.
+  let allQuestions = [];
 
-    IMPORTANT:
-    Do NOT change this URL unless your Render URL changes.
-  */
+  let examQuestions = [];
 
-  const socket = io(
-  "https://digichrome-exam-server.onrender.com",
-  {
-    transports: ["polling", "websocket"]
+  let currentQuestion = 0;
+
+  let score = 0;
+
+  let answered = false;
+
+  let studentName = "";
+
+
+  // =====================================================
+  // LOAD QUESTIONS
+  // =====================================================
+
+  async function loadQuestions() {
+
+    try {
+
+      const response = await fetch(
+        "./questions%20(1).json"
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Question file could not be loaded."
+        );
+      }
+
+      const data = await response.json();
+
+      if (!Array.isArray(data)) {
+
+        throw new Error(
+          "Question file format is invalid."
+        );
+
+      }
+
+      allQuestions = data;
+
+      document.getElementById("homeStatus").innerText =
+        "🟢 " +
+        allQuestions.length +
+        " questions loaded successfully.";
+
+    }
+
+    catch (error) {
+
+      console.error(error);
+
+      document.getElementById("homeStatus").innerText =
+        "🔴 Questions could not be loaded. " +
+        error.message;
+
+    }
+
   }
-);
 
 
-  let currentRoom = "";
-  let isHost = false;
-  let currentQuestionIndex = 0;
-  let selectedAnswer = null;
+  // =====================================================
+  // START EXAM
+  // =====================================================
 
+  function startExam() {
 
-  // --------------------------------------------------
-  // CONNECTION STATUS
-  // --------------------------------------------------
-
-  socket.on("connect", function () {
-
-    document.getElementById("connectionStatus").innerText =
-      "🟢 Connected to exam server";
-
-  });
-
-
-  socket.on("disconnect", function () {
-
-    document.getElementById("connectionStatus").innerText =
-      "🔴 Disconnected from exam server";
-
-  });
-
-
-  socket.on("connect_error", function (error) {
-
-    console.error("Socket connection error:", error);
-
-    document.getElementById("connectionStatus").innerText =
-      "🔴 Unable to connect to exam server";
-
-  });
-
-
-  // --------------------------------------------------
-  // CREATE ROOM
-  // --------------------------------------------------
-
-  function createRoom() {
-
-    const name =
-      document.getElementById("hostName").value.trim();
+    studentName =
+      document
+        .getElementById("studentName")
+        .value
+        .trim();
 
     const count =
-      Number(document.getElementById("questionCount").value);
-
-    const topic =
-      document.getElementById("topic").value.trim();
-
-
-    if (!name) {
-
-      alert("Please enter your name.");
-
-      return;
-
-    }
+      Number(
+        document
+          .getElementById("questionCount")
+          .value
+      );
 
 
-    if (!count || count < 1) {
-
-      alert("Please enter a valid question count.");
-
-      return;
-
-    }
-
-
-    if (!socket.connected) {
-
-      document.getElementById("homeStatus").innerText =
-        "Server is not connected. Please wait a moment and try again.";
-
-      return;
-
-    }
-
-
-    currentRoom = "";
-
-    isHost = true;
-
-
-    document.getElementById("homeStatus").innerText =
-      "Creating room...";
-
-
-    socket.emit(
-      "createRoom",
-      {
-        name: name,
-        count: count,
-        topic: topic || "Data Analysis"
-      },
-      function(response) {
-
-        if (!response || !response.ok) {
-
-          document.getElementById("homeStatus").innerText =
-            response?.error || "Unable to create room.";
-
-          return;
-
-        }
-
-
-        currentRoom = response.code;
-
-        showRoom();
-
-      }
-    );
-
-  }
-
-
-  // --------------------------------------------------
-  // JOIN ROOM
-  // --------------------------------------------------
-
-  function joinRoom() {
-
-    const name =
-      document.getElementById("playerName").value.trim();
-
-    const code =
-      document.getElementById("roomInput").value.trim().toUpperCase();
-
-
-    if (!name) {
+    if (!studentName) {
 
       alert("Please enter your name.");
 
@@ -404,194 +318,94 @@ i<!DOCTYPE html>
     }
 
 
-    if (!code) {
+    if (!allQuestions.length) {
 
-      alert("Please enter Room Code.");
-
-      return;
-
-    }
-
-
-    if (!socket.connected) {
-
-      document.getElementById("homeStatus").innerText =
-        "Server is not connected. Please wait a moment and try again.";
+      alert(
+        "Questions are not loaded yet. Please wait a moment."
+      );
 
       return;
 
     }
 
 
-    currentRoom = code;
+    // Shuffle questions
 
-    isHost = false;
-
-
-    document.getElementById("homeStatus").innerText =
-      "Joining room...";
-
-
-    socket.emit(
-      "joinRoom",
-      {
-        code: code,
-        name: name
-      },
-      function(response) {
-
-        if (!response || !response.ok) {
-
-          document.getElementById("homeStatus").innerText =
-            response?.error || "Unable to join room.";
-
-          return;
-
-        }
+    const shuffled =
+      [...allQuestions]
+        .sort(
+          () => Math.random() - 0.5
+        );
 
 
-        showRoom();
+    examQuestions =
+      shuffled.slice(
+        0,
+        Math.min(
+          count,
+          shuffled.length
+        )
+      );
 
-      }
-    );
 
-  }
+    currentQuestion = 0;
+
+    score = 0;
+
+    answered = false;
 
 
-  // --------------------------------------------------
-  // SHOW ROOM
-  // --------------------------------------------------
-
-  function showRoom() {
-
-    document.getElementById("homeScreen")
+    document
+      .getElementById("homeScreen")
       .classList.add("hidden");
 
-    document.getElementById("roomScreen")
-      .classList.remove("hidden");
-
-    document.getElementById("roomCodeDisplay")
-      .innerText = currentRoom;
-
-
-    if (isHost) {
-
-      document.getElementById("startButton")
-        .classList.remove("hidden");
-
-    }
-
-  }
-
-
-  // --------------------------------------------------
-  // LOBBY UPDATE
-  // --------------------------------------------------
-
-  socket.on("lobby", function(players) {
-
-    const list =
-      document.getElementById("playersList");
-
-    list.innerHTML = "";
-
-
-    if (!players || players.length === 0) {
-
-      list.innerHTML = "No players yet.";
-
-      return;
-
-    }
-
-
-    players.forEach(function(player) {
-
-      const div =
-        document.createElement("div");
-
-      div.innerText =
-        "👤 " + (player.name || "Player");
-
-      list.appendChild(div);
-
-    });
-
-
-    document.getElementById("roomStatus").innerText =
-      players.length + " player(s) in room";
-
-  });
-
-
-  // --------------------------------------------------
-  // START GAME
-  // --------------------------------------------------
-
-  function startGame() {
-
-    if (!currentRoom) {
-
-      alert("Room not found.");
-
-      return;
-
-    }
-
-
-    socket.emit(
-      "startGame",
-      {
-        code: currentRoom
-      }
-    );
-
-  }
-
-
-  // --------------------------------------------------
-  // GAME START
-  // --------------------------------------------------
-
-  socket.on("gameStart", function(data) {
-
-    console.log("Game started:", data);
-
-  });
-
-
-  // --------------------------------------------------
-  // QUESTION RECEIVED
-  // --------------------------------------------------
-
-  socket.on("question", function(data) {
-
-    if (!data) return;
-
-
-    document.getElementById("roomScreen")
+    document
+      .getElementById("resultScreen")
       .classList.add("hidden");
 
-    document.getElementById("examScreen")
+    document
+      .getElementById("examScreen")
       .classList.remove("hidden");
 
 
-    currentQuestionIndex =
-      data.index ?? 0;
+    showQuestion();
 
-    selectedAnswer = null;
+  }
 
 
-    document.getElementById("questionNumber")
+  // =====================================================
+  // SHOW QUESTION
+  // =====================================================
+
+  function showQuestion() {
+
+    answered = false;
+
+
+    const q =
+      examQuestions[currentQuestion];
+
+
+    document
+      .getElementById("questionNumber")
       .innerText =
-      "Question " + (currentQuestionIndex + 1)
-      + " / " + (data.total || "");
+      "Question " +
+      (currentQuestion + 1) +
+      " / " +
+      examQuestions.length;
 
 
-    document.getElementById("questionText")
+    document
+      .getElementById("scoreDisplay")
       .innerText =
-      data.question ||
-      data.text ||
+      "Score: " + score;
+
+
+    document
+      .getElementById("questionText")
+      .innerText =
+      q.question ||
+      q.text ||
       "Question";
 
 
@@ -602,239 +416,369 @@ i<!DOCTYPE html>
 
 
     const options =
-      data.options ||
-      data.choices ||
+      q.options ||
+      q.choices ||
       [];
 
 
-    options.forEach(function(option, index) {
+    options.forEach(
+      function(option, index) {
 
-      const button =
-        document.createElement("button");
+        const button =
+          document.createElement("button");
 
-      button.className = "option";
+        button.className =
+          "option";
 
-      button.innerText =
-        option;
+        button.innerText =
+          option;
 
-      button.onclick = function() {
+        button.onclick =
+          function() {
 
-        selectAnswer(
-          index,
-          option,
-          button
-        );
+            selectAnswer(
+              option,
+              index,
+              button
+            );
 
-      };
-
-
-      optionsContainer.appendChild(button);
-
-    });
+          };
 
 
-    document.getElementById("examStatus")
+        optionsContainer
+          .appendChild(button);
+
+      }
+    );
+
+
+    document
+      .getElementById("answerStatus")
       .innerText =
       "Select your answer.";
 
-  });
+
+    document
+      .getElementById("nextButton")
+      .classList.add("hidden");
+
+  }
 
 
-  // --------------------------------------------------
+  // =====================================================
   // SELECT ANSWER
-  // --------------------------------------------------
+  // =====================================================
 
   function selectAnswer(
-    index,
-    answer,
+    selectedOption,
+    selectedIndex,
     clickedButton
   ) {
 
-    if (selectedAnswer !== null) {
+    if (answered) {
       return;
     }
 
 
-    selectedAnswer = answer;
+    answered = true;
+
+
+    const q =
+      examQuestions[currentQuestion];
+
+
+    const correctAnswer =
+      q.answer;
 
 
     const buttons =
-      document.querySelectorAll(".option");
+      document.querySelectorAll(
+        ".option"
+      );
 
 
-    buttons.forEach(function(button) {
+    buttons.forEach(
+      function(button) {
 
-      button.disabled = true;
+        button.disabled = true;
 
-    });
-
-
-    clickedButton.style.background = "#ddd";
-
-
-    socket.emit(
-      "answer",
-      {
-        code: currentRoom,
-        index: currentQuestionIndex,
-        answer: answer
       }
     );
 
 
-    document.getElementById("examStatus")
+    // Determine correct answer
+
+    let isCorrect = false;
+
+
+    if (
+      String(correctAnswer)
+        .trim()
+        .toLowerCase()
+      ===
+      String(selectedOption)
+        .trim()
+        .toLowerCase()
+    ) {
+
+      isCorrect = true;
+
+    }
+
+
+    // Also support answer as option index
+
+    if (
+      String(correctAnswer)
+        === String(selectedIndex)
+    ) {
+
+      isCorrect = true;
+
+    }
+
+
+    // Also support A/B/C/D
+
+    if (
+      typeof correctAnswer === "string"
+      &&
+      correctAnswer.length === 1
+    ) {
+
+      const letter =
+        String.fromCharCode(
+          65 + selectedIndex
+        );
+
+
+      if (
+        correctAnswer
+          .trim()
+          .toUpperCase()
+        === letter
+      ) {
+
+        isCorrect = true;
+
+      }
+
+    }
+
+
+    if (isCorrect) {
+
+      score++;
+
+      clickedButton.classList.add(
+        "correct"
+      );
+
+      document
+        .getElementById("answerStatus")
+        .innerText =
+        "✅ Correct Answer!";
+
+    }
+
+    else {
+
+      clickedButton.classList.add(
+        "wrong"
+      );
+
+
+      // Highlight correct option
+
+      buttons.forEach(
+        function(button) {
+
+          if (
+            String(button.innerText)
+              .trim()
+              .toLowerCase()
+            ===
+            String(correctAnswer)
+              .trim()
+              .toLowerCase()
+          ) {
+
+            button.classList.add(
+              "correct"
+            );
+
+          }
+
+        }
+      );
+
+
+      document
+        .getElementById("answerStatus")
+        .innerText =
+        "❌ Wrong Answer";
+
+    }
+
+
+    document
+      .getElementById("scoreDisplay")
       .innerText =
-      "Answer submitted.";
+      "Score: " + score;
+
+
+    const nextButton =
+      document.getElementById(
+        "nextButton"
+      );
+
+
+    nextButton.classList.remove(
+      "hidden"
+    );
+
+
+    if (
+      currentQuestion ===
+      examQuestions.length - 1
+    ) {
+
+      nextButton.innerText =
+        "Finish Exam 🏁";
+
+    }
 
   }
 
 
-  // --------------------------------------------------
-  // SCORES
-  // --------------------------------------------------
-
-  socket.on("scores", function(scores) {
-
-    console.log("Scores:", scores);
-
-  });
-
-
-  // --------------------------------------------------
+  // =====================================================
   // NEXT QUESTION
-  // --------------------------------------------------
+  // =====================================================
 
   function nextQuestion() {
 
-    if (!isHost) {
+    if (!answered) {
       return;
     }
 
 
-    socket.emit(
-      "nextQuestion",
-      {
-        code: currentRoom
-      }
-    );
+    currentQuestion++;
+
+
+    if (
+      currentQuestion >=
+      examQuestions.length
+    ) {
+
+      finishExam();
+
+      return;
+
+    }
+
+
+    showQuestion();
 
   }
 
 
-  // --------------------------------------------------
-  // FINISHED
-  // --------------------------------------------------
+  // =====================================================
+  // FINISH EXAM
+  // =====================================================
 
-  socket.on("finished", function(results) {
+  function finishExam() {
 
-    document.getElementById("examScreen")
+    document
+      .getElementById("examScreen")
+      .classList.add("hidden");
+
+
+    document
+      .getElementById("resultScreen")
       .classList.remove("hidden");
 
 
-    document.getElementById("questionText")
+    const total =
+      examQuestions.length;
+
+
+    const percentage =
+      Math.round(
+        (score / total) * 100
+      );
+
+
+    document
+      .getElementById("studentResult")
       .innerText =
-      "🎉 Exam Finished";
+      "Student: " + studentName;
 
 
-    document.getElementById("options")
-      .innerHTML = "";
+    document
+      .getElementById("finalScore")
+      .innerText =
+      score +
+      " / " +
+      total +
+      " (" +
+      percentage +
+      "%)";
 
 
-    let html = "<h3>Final Results</h3>";
+    let message = "";
 
 
-    if (Array.isArray(results)) {
+    if (percentage >= 80) {
 
-      results.forEach(function(player, index) {
+      message =
+        "🏆 Excellent performance!";
 
-        html +=
-          "<p>" +
-          (index + 1) +
-          ". " +
-          (player.name || "Player") +
-          " — " +
-          (player.score || 0) +
-          " points" +
-          "</p>";
+    }
 
-      });
+    else if (percentage >= 60) {
+
+      message =
+        "👍 Good performance!";
+
+    }
+
+    else if (percentage >= 40) {
+
+      message =
+        "📚 Keep practicing!";
+
+    }
+
+    else {
+
+      message =
+        "💪 More practice required.";
 
     }
 
 
-    document.getElementById("examStatus")
-      .innerHTML = html;
+    document
+      .getElementById("resultDetails")
+      .innerHTML =
+      "<p>" + message + "</p>" +
+      "<p>Total Questions: " +
+      total +
+      "</p>" +
+      "<p>Correct Answers: " +
+      score +
+      "</p>" +
+      "<p>Wrong Answers: " +
+      (total - score) +
+      "</p>";
+
+  }
 
 
-    document.getElementById("nextButton")
-      .classList.add("hidden");
+  // =====================================================
+  // LOAD QUESTIONS WHEN PAGE OPENS
+  // =====================================================
 
-  });
-
-
-  // --------------------------------------------------
-  // ROOM CLOSED
-  // --------------------------------------------------
-
-  socket.on("roomClosed", function(data) {
-
-    alert(
-      data?.message ||
-      "Host disconnected. Room closed."
-    );
-
-
-    location.reload();
-
-  });
-
-
-  // --------------------------------------------------
-  // ANTI-CHEATING
-  // --------------------------------------------------
-
-  document.addEventListener(
-    "visibilitychange",
-    function() {
-
-      if (document.hidden) {
-
-        alert(
-          "⚠️ Warning: Please do not leave the exam screen."
-        );
-
-      }
-
-    }
-  );
-
-
-  // --------------------------------------------------
-  // DISABLE CONTEXT MENU
-  // --------------------------------------------------
-
-  document.addEventListener(
-    "contextmenu",
-    function(event) {
-
-      event.preventDefault();
-
-    }
-  );
-
-
-  // --------------------------------------------------
-  // DISABLE COPY
-  // --------------------------------------------------
-
-  document.addEventListener(
-    "copy",
-    function(event) {
-
-      event.preventDefault();
-
-    }
-  );
+  loadQuestions();
 
 </script>
 
