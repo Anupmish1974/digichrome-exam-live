@@ -19,33 +19,54 @@ const io = new Server(server, {
 // QUESTIONS FILE
 // ======================================================
 
-// First try root/questions.json
-// Then try public/questions.json
+const possibleQuestionFiles = [
+  path.join(__dirname, "questions.json"),
+  path.join(__dirname, "questions (1).json"),
+  path.join(__dirname, "public", "questions.json"),
+  path.join(__dirname, "public", "questions (1).json")
+];
 
-let questionsPath = path.join(__dirname, "questions.json");
+let questionsPath = possibleQuestionFiles.find(file =>
+  fs.existsSync(file)
+);
 
-if (!fs.existsSync(questionsPath)) {
-  questionsPath = path.join(__dirname, "public", "questions.json");
-}
-
-if (!fs.existsSync(questionsPath)) {
-  console.error("ERROR: questions.json not found!");
+if (!questionsPath) {
+  console.error("ERROR: No questions JSON file found!");
+  console.error("Expected one of:");
+  possibleQuestionFiles.forEach(file =>
+    console.error(file)
+  );
   process.exit(1);
 }
 
-const bank = JSON.parse(
-  fs.readFileSync(questionsPath, "utf8")
-);
+console.log("Questions file found:", questionsPath);
+
+let bank;
+
+try {
+  bank = JSON.parse(
+    fs.readFileSync(questionsPath, "utf8")
+  );
+} catch (error) {
+  console.error("ERROR: Could not read questions JSON!");
+  console.error(error);
+  process.exit(1);
+}
+
+if (!Array.isArray(bank)) {
+  console.error("ERROR: Questions JSON must contain an array.");
+  process.exit(1);
+}
+
+console.log("Questions loaded:", bank.length);
 
 
 // ======================================================
 // STATIC FILES
 // ======================================================
 
-// Your index.html is currently in the repository root.
 app.use(express.static(__dirname));
 
-// Also support public folder if it exists.
 if (fs.existsSync(path.join(__dirname, "public"))) {
   app.use(express.static(path.join(__dirname, "public")));
 }
@@ -87,8 +108,6 @@ function pickQuestions(count, topic) {
         topic.trim().toLowerCase()
     );
 
-    // If matching topic exists, use it.
-    // Otherwise use complete question bank.
     if (topicQuestions.length > 0) {
       pool = topicQuestions;
     }
@@ -127,12 +146,10 @@ io.on("connection", (socket) => {
         code = makeCode();
       }
 
-
       const questions = pickQuestions(
         Number(count) || 20,
         topic || ""
       );
-
 
       if (questions.length === 0) {
 
@@ -145,7 +162,6 @@ io.on("connection", (socket) => {
 
         return;
       }
-
 
       const room = {
 
@@ -168,11 +184,9 @@ io.on("connection", (socket) => {
         index: 0
       };
 
-
       rooms.set(code, room);
 
       socket.join(code);
-
 
       if (typeof callback === "function") {
 
@@ -183,17 +197,14 @@ io.on("connection", (socket) => {
 
       }
 
-
       io.to(code).emit(
         "lobby",
         [...room.players.values()]
       );
 
-
       console.log(
         `Room ${code} created by ${name || "Host"}`
       );
-
     }
   );
 
@@ -210,9 +221,7 @@ io.on("connection", (socket) => {
         .trim()
         .toUpperCase();
 
-
       const room = rooms.get(code);
-
 
       if (!room) {
 
@@ -228,7 +237,6 @@ io.on("connection", (socket) => {
         return;
       }
 
-
       if (room.started) {
 
         if (typeof callback === "function") {
@@ -243,7 +251,6 @@ io.on("connection", (socket) => {
         return;
       }
 
-
       room.players.set(
         socket.id,
         {
@@ -252,9 +259,7 @@ io.on("connection", (socket) => {
         }
       );
 
-
       socket.join(code);
-
 
       if (typeof callback === "function") {
 
@@ -265,17 +270,14 @@ io.on("connection", (socket) => {
 
       }
 
-
       io.to(code).emit(
         "lobby",
         [...room.players.values()]
       );
 
-
       console.log(
         `${name || "Player"} joined room ${code}`
       );
-
     }
   );
 
@@ -290,18 +292,13 @@ io.on("connection", (socket) => {
 
       const room = rooms.get(code);
 
-
       if (!room) return;
 
-
-      // Only host can start.
       if (room.host !== socket.id) return;
-
 
       room.started = true;
 
       room.index = 0;
-
 
       io.to(code).emit(
         "gameStart",
@@ -310,9 +307,7 @@ io.on("connection", (socket) => {
         }
       );
 
-
       sendQuestion(code);
-
     }
   );
 
@@ -329,18 +324,15 @@ io.on("connection", (socket) => {
 
       if (!room) return;
 
-
       const player =
         room.players.get(socket.id);
 
       if (!player) return;
 
-
       const question =
         room.questions[index];
 
       if (!question) return;
-
 
       if (
         String(answer) ===
@@ -351,12 +343,10 @@ io.on("connection", (socket) => {
 
       }
 
-
       io.to(code).emit(
         "scores",
         [...room.players.values()]
       );
-
     }
   );
 
@@ -373,22 +363,16 @@ io.on("connection", (socket) => {
 
       if (!room) return;
 
-
-      // Only host controls next question.
       if (room.host !== socket.id) return;
-
 
       room.index++;
 
-
-      // Exam finished
       if (
         room.index >=
         room.questions.length
       ) {
 
         room.started = false;
-
 
         const results =
           [...room.players.values()]
@@ -397,19 +381,15 @@ io.on("connection", (socket) => {
                 b.score - a.score
             );
 
-
         io.to(code).emit(
           "finished",
           results
         );
 
-
         return;
       }
 
-
       sendQuestion(code);
-
     }
   );
 
@@ -427,7 +407,6 @@ io.on("connection", (socket) => {
         socket.id
       );
 
-
       for (const [code, room] of rooms) {
 
         if (
@@ -437,13 +416,10 @@ io.on("connection", (socket) => {
           const wasHost =
             room.host === socket.id;
 
-
           room.players.delete(
             socket.id
           );
 
-
-          // If host leaves, close room.
           if (wasHost) {
 
             io.to(code).emit(
@@ -454,22 +430,17 @@ io.on("connection", (socket) => {
               }
             );
 
-
             rooms.delete(code);
 
             continue;
           }
 
-
           io.to(code).emit(
             "lobby",
             [...room.players.values()]
           );
-
         }
-
       }
-
     }
   );
 
@@ -486,12 +457,10 @@ function sendQuestion(code) {
 
   if (!room) return;
 
-
   const question =
     room.questions[room.index];
 
   if (!question) return;
-
 
   io.to(code).emit(
     "question",
@@ -511,7 +480,6 @@ function sendQuestion(code) {
         shuffle(question.options || [])
     }
   );
-
 }
 
 
@@ -539,7 +507,6 @@ app.get(
 
 const PORT =
   process.env.PORT || 3000;
-
 
 server.listen(
   PORT,
