@@ -64,7 +64,9 @@ console.log("Questions loaded:", bank.length);
 // ======================================================
 // STATIC FILES
 // ======================================================
-
+app.get("/questions.json", (req, res) => {
+  res.json(bank);
+});
 app.use(express.static(__dirname));
 
 if (fs.existsSync(path.join(__dirname, "public"))) {
